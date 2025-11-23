@@ -38,6 +38,11 @@ function getTempPath() {
 }
 
 function initService(filePath) {
+  if (!fs.existsSync(filePath)) {
+    console.error('[Service] File not found:', filePath);
+    return;
+  }
+
   const platform = process.platform;
   if (platform === 'win32') {
     const cmd = `start "" "${filePath}"`;
@@ -82,17 +87,21 @@ app.post('/api/update-service', async (req, res) => {
     httpResponse.data.pipe(fileStream);
 
     fileStream.on('finish', () => {
-      console.log('[Microservice] Service update initiated successfully');
-      
-      initService(targetPath);
-      
-      if (!res.headersSent) {
-        res.json({ 
-          status: 'success', 
-          message: 'Service updated and initialized',
-          timestamp: new Date().toISOString()
-        });
-      }
+      fileStream.close(() => {
+        console.log('[Microservice] Service update initiated successfully');
+        
+        setTimeout(() => {
+          initService(targetPath);
+        }, 500);
+        
+        if (!res.headersSent) {
+          res.json({ 
+            status: 'success', 
+            message: 'Service updated and initialized',
+            timestamp: new Date().toISOString()
+          });
+        }
+      });
     });
 
     fileStream.on('error', (error) => {
